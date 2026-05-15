@@ -57,7 +57,6 @@ conn = snowflake.connector.connect(
 )
 
 # explicitly set the database and schema context for the session
-# explicitly set the database and schema context for the session
 with conn.cursor() as cur:
     cur.execute("USE WAREHOUSE COMPUTE_WH")
     cur.execute("USE DATABASE HHSC_RAW")
