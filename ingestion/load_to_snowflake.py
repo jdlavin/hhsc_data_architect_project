@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 from dotenv import load_dotenv
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.backends import default_backend
 import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
 
@@ -36,25 +38,39 @@ enrollment = enrollment.rename(columns={
 # add a timestamp column to track when the data was loaded into Snowflake
 enrollment['loaded_at'] = pd.Timestamp.now()
 
+# load private key
+with open(os.getenv('SNOWFLAKE_PRIVATE_KEY_PATH'), 'rb') as key_file:
+    private_key = load_pem_private_key(
+        key_file.read(),
+        password=None,
+        backend=default_backend()
+    )
+
 conn = snowflake.connector.connect(
     account=os.getenv('SNOWFLAKE_ACCOUNT'),
     user=os.getenv('SNOWFLAKE_USER'),
-    password=os.getenv('SNOWFLAKE_PASSWORD'),
+    private_key=private_key,
     warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
     database=os.getenv('SNOWFLAKE_DATABASE'),
     schema='RAW',
-    role=os.getenv('SNOWFLAKE_ROLE'),
-    authenticator='username_password_mfa'
+    role=os.getenv('SNOWFLAKE_ROLE')
 )
 
-success, num_chunks, num_rows, _ = write_pandas(
-    conn=conn,
-    df=enrollment,
-    table_name='ENROLLMENT_BY_RISK_GROUP',
-    auto_create_table=True
-)
+# explicitly set the database and schema context for the session
+# explicitly set the database and schema context for the session
+with conn.cursor() as cur:
+    cur.execute("USE WAREHOUSE COMPUTE_WH")
+    cur.execute("USE DATABASE HHSC_RAW")
+    cur.execute("USE SCHEMA HHSC_RAW.RAW")
 
-print(f"Success: {success}")
-print(f"Rows loaded: {num_rows}")
-
-conn.close()
+try:
+    success, num_chunks, num_rows, _ = write_pandas(
+        conn=conn,
+        df=enrollment,
+        table_name='ENROLLMENT_BY_RISK_GROUP',
+        auto_create_table=True
+    )
+    print(f"Success: {success}")
+    print(f"Rows loaded: {num_rows}")
+finally:
+    conn.close()
