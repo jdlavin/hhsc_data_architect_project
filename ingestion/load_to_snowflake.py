@@ -43,7 +43,8 @@ conn = snowflake.connector.connect(
     warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
     database=os.getenv('SNOWFLAKE_DATABASE'),
     schema='RAW',
-    role=os.getenv('SNOWFLAKE_ROLE')
+    role=os.getenv('SNOWFLAKE_ROLE'),
+    authenticator='username_password_mfa'
 )
 
 success, num_chunks, num_rows, _ = write_pandas(
