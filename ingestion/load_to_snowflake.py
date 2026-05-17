@@ -221,3 +221,59 @@ load_table(timeliness, 'TIMELINESS_MEDICAID')
 
 conn.close()
 print("\nAll tables loaded. Connection closed.")
+
+# ── 6. MCO Enrollment by SDA ─────────────────────────────────────────────────
+
+print("\n[6/6] Loading MCO enrollment by SDA...")
+
+f = RAW / "medicaid_&_chip_enrollement/mco-enrollment-by-sda-final-sfy25.xlsx"
+df_raw = pd.read_excel(f, sheet_name=0, header=None)
+
+sda_columns = df_raw.iloc[1, 1:-1].tolist()
+
+MCO_BLOCK_SIZE = 10
+DATA_START_ROW = 2
+DATA_END_ROW   = 202
+
+PROGRAM_MAP = {
+    0: ('TOTAL',    'TOTAL'),
+    1: ('CHIP',     'TOTAL'),
+    2: ('CHIP',     'Regular'),
+    3: ('CHIP',     'Perinatal'),
+    4: ('MEDICAID', 'TOTAL'),
+    5: ('MEDICAID', 'STAR'),
+    6: ('MEDICAID', 'STAR+Plus'),
+    7: ('MEDICAID', 'Dual Demo'),
+    8: ('MEDICAID', 'STAR Health'),
+    9: ('MEDICAID', 'STAR Kids'),
+}
+
+records = []
+
+for block_start in range(DATA_START_ROW, DATA_END_ROW, MCO_BLOCK_SIZE):
+    mco_name = df_raw.iloc[block_start, 0]
+
+    for offset, (program, sub_program) in PROGRAM_MAP.items():
+        row = df_raw.iloc[block_start + offset, 1:-1]
+
+        for sda, value in zip(sda_columns, row):
+            if pd.isna(value):
+                continue
+
+            records.append({
+                'mco_name':        mco_name,
+                'program':         program,
+                'sub_program':     sub_program,
+                'sda':             sda,
+                'enrollment':      value,
+                'enrollment_type': 'sfy_monthly_average',
+                'fiscal_year':     2025,
+                'source_file':     f.name,
+                'loaded_at':       pd.Timestamp.now()
+            })
+
+mco_sda = pd.DataFrame(records)
+mco_sda['mco_name'] = mco_sda['mco_name'].str.replace('\n', ' ', regex=False).str.strip()
+
+print(f"  Total rows: {len(mco_sda)}")
+load_table(mco_sda, 'MCO_ENROLLMENT_BY_SDA')
