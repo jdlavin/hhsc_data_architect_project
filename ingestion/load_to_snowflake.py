@@ -82,7 +82,7 @@ def parse_report_month(filename):
 
 # ── 1. Enrollment by Risk Group ───────────────────────────────────────────────
 
-print("\n[1/5] Loading enrollment by risk group...")
+print("\n[1/6] Loading enrollment by risk group...")
 
 df = pd.read_excel(
     RAW / "medicaid_&_chip_enrollement/monthly-enrollment-by-risk-group.xlsx",
@@ -101,7 +101,7 @@ load_table(df, 'ENROLLMENT_BY_RISK_GROUP')
 
 # ── 2. CHIP Enrollment Detail ─────────────────────────────────────────────────
 
-print("\n[2/5] Loading CHIP enrollment detail...")
+print("\n[2/6] Loading CHIP enrollment detail...")
 
 df = pd.read_excel(
     RAW / "medicaid_&_chip_enrollement/chip-enrollment-detail.xlsx",
@@ -115,7 +115,7 @@ load_table(df, 'CHIP_ENROLLMENT_DETAIL')
 
 # ── 3. Healthy Texas Women Enrollment ────────────────────────────────────────
 
-print("\n[3/5] Loading Healthy Texas Women enrollment...")
+print("\n[3/6] Loading Healthy Texas Women enrollment...")
 
 df = pd.read_excel(
     RAW / "medicaid_&_chip_enrollement/healthy-texas-women-enrollment.xlsx",
@@ -132,7 +132,7 @@ load_table(df, 'HTW_ENROLLMENT')
 
 # ── 4. Enrollment by County (loop) ────────────────────────────────────────────
 
-print("\n[4/5] Loading enrollment by county...")
+print("\n[4/6] Loading enrollment by county...")
 
 COUNTY_DIR = RAW / "county"
 all_frames = []
@@ -174,7 +174,7 @@ load_table(combined, 'ENROLLMENT_BY_COUNTY')
 
 # ── 5. Timeliness ─────────────────────────────────────────────────────────────
 
-print("\n[5/5] Loading timeliness...")
+print("\n[5/6] Loading timeliness...")
 
 TIMELINESS_DIR = RAW / "timeliness"
 all_timeliness = []
@@ -216,11 +216,6 @@ timeliness['loaded_at'] = pd.Timestamp.now()
 
 print(f"  Total rows: {len(timeliness)}")
 load_table(timeliness, 'TIMELINESS_MEDICAID')
-
-# ── Done ──────────────────────────────────────────────────────────────────────
-
-conn.close()
-print("\nAll tables loaded. Connection closed.")
 
 # ── 6. MCO Enrollment by SDA ─────────────────────────────────────────────────
 
@@ -277,3 +272,8 @@ mco_sda['mco_name'] = mco_sda['mco_name'].str.replace('\n', ' ', regex=False).st
 
 print(f"  Total rows: {len(mco_sda)}")
 load_table(mco_sda, 'MCO_ENROLLMENT_BY_SDA')
+
+# ── Done ──────────────────────────────────────────────────────────────────────
+
+conn.close()
+print("\nAll tables loaded. Connection closed.")
