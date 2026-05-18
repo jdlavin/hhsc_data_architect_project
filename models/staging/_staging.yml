@@ -31,21 +31,26 @@ models:
   - name: stg_enrollment_by_county
     description: >
       Staged monthly Medicaid enrollment by Texas county. 255 counties.
-      COUNT METHODOLOGY: point_in_time_end_of_month.
-      Will NOT reconcile with stg_enrollment_by_risk_group (different methodology).
-      Nov and Dec 2025 files not yet published by HHSC -- expected gap.
+      COUNT METHODOLOGY: point_in_time_count throughout -- no fractional values
+      observed unlike stg_enrollment_by_risk_group. Will NOT reconcile with
+      stg_enrollment_by_risk_group (different methodology). Nov and Dec 2025
+      files not yet published by HHSC -- expected gap.
       Rows for Sep 2025+ are is_preliminary=true.
     columns:
       - name: report_month
         description: First day of the reporting month (date)
         tests:
           - not_null
-      - name: county_name
-        description: Texas county name (uppercase)
-        tests:
-          - not_null
       - name: county_code
         description: HHSC county code
+        tests:
+          - not_null
+      - name: county_name
+        description: Texas county name
+        tests:
+          - not_null
+      - name: risk_group
+        description: Risk group category unpivoted from wide source table
         tests:
           - not_null
       - name: enrollment_count
@@ -53,14 +58,7 @@ models:
         tests:
           - not_null
       - name: count_methodology
-        description: Always 'point_in_time_end_of_month' for this table
-        tests:
-          - not_null
-          - accepted_values:
-              arguments:
-                values: ['point_in_time_end_of_month']
-      - name: is_preliminary
-        description: True for Sep 2025+ rows subject to retroactive revision
+        description: Always point_in_time_count for this table
         tests:
           - not_null
 

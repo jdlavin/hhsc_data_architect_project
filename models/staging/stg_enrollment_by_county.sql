@@ -21,10 +21,10 @@
     cover overlapping categories but WILL NOT reconcile due to different
     counting methodologies. Do not attempt to reconcile.
 
-    PRELIMINARY DATA NOTE:
-    The county file bridging Sep 2025-Feb 2026 is a preliminary release.
-    TX policy allows 24-month retroactive adjustments. is_preliminary=true rows
-    should be treated as estimates subject to revision.
+   DATE RANGE: Apr 2024 - Sep 2025 (21 monthly files).
+    Nov and Dec 2025 files not yet published by HHSC as of ingestion.
+    No preliminary data loaded -- preliminary county file skipped as
+    2026 data has no counterpart tables to join against.
 */
 
 with source as (
@@ -66,11 +66,6 @@ staged as (
         enrollment_count,
 
         'point_in_time_count'                          as count_methodology,
-
-        case
-            when report_month >= '2025-09-01' then true
-            else false
-        end                                            as is_preliminary,
 
         current_timestamp()                            as dbt_loaded_at
 
