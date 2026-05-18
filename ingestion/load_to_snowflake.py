@@ -145,7 +145,7 @@ all_frames = []
 
 for filepath in sorted(COUNTY_DIR.glob("*.xlsx")):
     filename = filepath.name
-    report_month = parse_report_month(filename)
+    report_month = parse_report_month(filename) // 1000 # convert to Unix timestamp 
 
     df = pd.read_excel(filepath, sheet_name='Summary', skiprows=2, header=0)
 
@@ -202,7 +202,7 @@ for filepath in sorted(TIMELINESS_DIR.glob("*.xlsx")):
     redets['record_type'] = 'redeterminations'
 
     combined = pd.concat([apps, redets], ignore_index=True)
-    combined['report_month'] = report_month.value // 1000
+    combined['report_month'] = report_month.value // 1000 # convert to Unix timestamp
     all_timeliness.append(combined)
     print(f"  Processed {filename}: {len(combined)} rows")
 
