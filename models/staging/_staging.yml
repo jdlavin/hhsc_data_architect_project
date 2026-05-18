@@ -139,25 +139,35 @@ models:
               arguments:
                 values: ['applications', 'redeterminations']
       - name: disposed
-        description: Total cases processed in the period
+        description: Total cases processed in the period. Null for some non-geographic entities.
         tests:
-          - not_null
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
       - name: timely
-        description: Cases meeting federal timeliness standard
+        description: Cases meeting federal timeliness standard. Null for some non-geographic entities.
         tests:
-          - not_null
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
       - name: untimely
-        description: Cases not meeting timeliness standard (derived as disposed - timely)
+        description: Cases not meeting timeliness standard (derived). Null for some non-geographic entities.
         tests:
-          - not_null
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
       - name: pct_timely
-        description: Derived percent timely (timely / disposed * 100)
+        description: Derived percent timely. Null for some non-geographic entities.
         tests:
-          - not_null
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
       - name: src_percent
-        description: Source percent value from raw file for validation against pct_timely
+        description: Source percent value from raw file. Null for some non-geographic entities.
         tests:
-          - not_null
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
       - name: is_geographic_region
         description: True for numeric region codes, false for processing unit codes
         tests:
