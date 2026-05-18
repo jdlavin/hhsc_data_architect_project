@@ -168,7 +168,6 @@ for filepath in sorted(COUNTY_DIR.glob("*.xlsx")):
     df['hhsc_county_code'] = df['hhsc_county_code'].astype(int)
 
     df['report_month'] = pd.to_datetime(report_month)
-    df['source_file']  = filename
     df['loaded_at']    = pd.Timestamp.now()
 
     all_frames.append(df)
