@@ -13,9 +13,10 @@
     women aged 15-44 who are not otherwise eligible for Medicaid. This is a
     statewide total -- no county or risk group breakdown in source data.
 
-    PRELIMINARY DATA NOTE:
-    Rows for Sep 2025 onward are within the 24-month TX retroactive adjustment
-    window and are subject to revision.
+    CASELOAD VS ENROLLMENT: HTW reports active caseload (point-in-time active
+    cases) not an enrollment flow count. Starting Aug 2025 the source data
+    shifts to average daily caseload, producing fractional values.
+    See count_methodology column.
 */
 
 with source as (
@@ -27,23 +28,15 @@ with source as (
 staged as (
 
     select
-        -- keys
-        cast(report_date as date)                          as report_month,
+        cast(to_timestamp("month", 6) as date)            as report_month,
+        cast("caseload" as float)                         as htw_caseload,
 
-        -- measures
-        cast(enrollment as integer)                        as enrollment_count,
-
-        -- methodology documentation
-        'ever_enrolled_unduplicated'                       as count_methodology,
-
-        -- preliminary flag
         case
-            when cast(report_date as date) >= '2025-09-01' then true
-            else false
-        end                                                as is_preliminary,
+            when report_month >= '2025-08-01' then 'average_daily_caseload'
+            else 'point_in_time_count'
+        end                                               as count_methodology,
 
-        -- audit
-        current_timestamp()                                as dbt_loaded_at
+        current_timestamp()                               as dbt_loaded_at
 
     from source
 

@@ -1,21 +1,23 @@
 {{
     config(
         materialized='view',
-        description='Staged monthly CHIP enrollment by sub-program. Casts types and standardizes names. Does not aggregate.'
+        description='Staged monthly CHIP enrollment metrics. Casts types and renames columns. Does not aggregate.'
     )
 }}
 
 /*
     SOURCE: HHSC_RAW.RAW.CHIP_ENROLLMENT_DETAIL
-    GRAIN: One row per program per report_month (138 rows, Sep 2014-Feb 2026)
+    GRAIN: One row per report_month (138 rows, Sep 2014-Feb 2026)
 
     CHIP covers children in families with incomes too high for Medicaid but
-    who cannot afford private insurance. CHIP Perinate covers unborn children
-    of pregnant women.
+    who cannot afford private insurance.
 
-    PRELIMINARY DATA NOTE:
-    Rows for Sep 2025 onward are within the 24-month TX retroactive adjustment
-    window and are subject to revision.
+    SHAPE: Wide format retained -- columns represent different metrics
+    (caseload, new enrollment, renewals, disenrollment), not the same metric
+    for different categories. No unpivot needed.
+
+    No fractional values observed in any column -- integer casting is safe
+    throughout the full date range. No methodology shift detected.
 */
 
 with source as (
@@ -28,23 +30,16 @@ staged as (
 
     select
         -- keys
-        cast(report_date as date)                          as report_month,
-        trim(program)                                      as chip_program,
+        cast(to_timestamp("month", 6) as date)      as report_month,
 
-        -- measures
-        cast(enrollment as integer)                        as enrollment_count,
-
-        -- methodology documentation (consistent with risk group table)
-        'ever_enrolled_unduplicated'                       as count_methodology,
-
-        -- preliminary flag
-        case
-            when cast(report_date as date) >= '2025-09-01' then true
-            else false
-        end                                                as is_preliminary,
+        -- measures (all clean integers throughout full date range)
+        cast("chip_caseload" as integer)             as chip_caseload,
+        cast("new_enrollment" as integer)            as new_enrollment,
+        cast("renewals" as integer)                  as renewals,
+        cast("disenrollment" as integer)             as disenrollment,
 
         -- audit
-        current_timestamp()                                as dbt_loaded_at
+        current_timestamp()                          as dbt_loaded_at
 
     from source
 

@@ -66,31 +66,29 @@ models:
 
   - name: stg_chip_enrollment
     description: >
-      Staged monthly CHIP enrollment by sub-program (CHIP, CHIP Perinate).
-      Sep 2014-Feb 2026.
-      COUNT METHODOLOGY: ever_enrolled_unduplicated.
+      Staged monthly CHIP enrollment metrics. One row per month, Sep 2014-Feb 2026.
+      Wide format retained -- columns are different metrics, not categories.
+      No methodology shift detected, integer casting safe throughout.
     columns:
       - name: report_month
         description: First day of the reporting month (date)
         tests:
           - not_null
-      - name: chip_program
-        description: CHIP sub-program name
+          - unique
+      - name: chip_caseload
+        description: Total CHIP caseload for the month
         tests:
           - not_null
-      - name: enrollment_count
-        description: Monthly enrollment count
+      - name: new_enrollment
+        description: New members enrolled during the month
         tests:
           - not_null
-      - name: count_methodology
-        description: Always 'ever_enrolled_unduplicated' for this table
+      - name: renewals
+        description: Members renewed during the month
         tests:
           - not_null
-          - accepted_values:
-              arguments:
-                values: ['ever_enrolled_unduplicated']
-      - name: is_preliminary
-        description: True for Sep 2025+ rows subject to retroactive revision
+      - name: disenrollment
+        description: Members disenrolled during the month
         tests:
           - not_null
 
