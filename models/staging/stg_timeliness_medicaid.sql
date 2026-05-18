@@ -17,10 +17,6 @@
     pct_timely is either sourced directly from raw or derived here as
     timely_cases / nullif(total_cases, 0). Both paths produce the same result;
     the derivation is a safeguard against raw file inconsistencies.
-
-    PRELIMINARY DATA NOTE:
-    Same 24-month TX retroactive window applies. Rows for Sep 2025 onward
-    flagged is_preliminary=true.
 */
 
 with source as (
@@ -33,7 +29,7 @@ staged as (
 
     select
         -- keys
-        cast(report_date as date)                          as report_month,
+        cast(to_timestamp("report_month", 6) as date)      as report_month,
         trim(measure_type)                                 as measure_type,
 
         -- measures
@@ -49,12 +45,6 @@ staged as (
                 2
             )
         )                                                  as pct_timely,
-
-        -- preliminary flag
-        case
-            when cast(report_date as date) >= '2025-09-01' then true
-            else false
-        end                                                as is_preliminary,
 
         -- audit
         current_timestamp()                                as dbt_loaded_at
