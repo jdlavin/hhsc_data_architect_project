@@ -167,7 +167,7 @@ for filepath in sorted(COUNTY_DIR.glob("*.xlsx")):
     df = df[pd.to_numeric(df['hhsc_county_code'], errors='coerce').notna()].copy()
     df['hhsc_county_code'] = df['hhsc_county_code'].astype(int)
 
-    df['report_month'] = pd.to_datetime(report_month) // 1000 # convert to Unix timestamp 
+    df['report_month'] = pd.to_datetime(report_month).value // 1000 # convert to Unix timestamp
     df['loaded_at']    = pd.Timestamp.now()
 
     all_frames.append(df)
@@ -202,7 +202,7 @@ for filepath in sorted(TIMELINESS_DIR.glob("*.xlsx")):
     redets['record_type'] = 'redeterminations'
 
     combined = pd.concat([apps, redets], ignore_index=True)
-    combined['report_month'] = report_month // 1000 # convert to Unix timestamp
+    combined['report_month'] = report_month.value // 1000 # convert to Unix timestamp
     all_timeliness.append(combined)
     print(f"  Processed {filename}: {len(combined)} rows")
 
