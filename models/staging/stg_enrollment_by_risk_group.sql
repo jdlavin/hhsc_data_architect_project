@@ -1,24 +1,29 @@
 {{
     config(
         materialized='view',
-        description='Staged monthly Medicaid enrollment by risk group. Casts types, standardizes names, and documents count methodology. Does not aggregate.'
+        description='Staged monthly Medicaid enrollment by risk group. Unpivots wide source table to long format, casts types, and documents count methodology per risk group.'
     )
 }}
 
 /*
     SOURCE: HHSC_RAW.RAW.ENROLLMENT_BY_RISK_GROUP
-    GRAIN: One row per risk_group per report_month (138 rows, Sep 2014-Feb 2026)
+    GRAIN: One row per risk_group per report_month (138 months x 10 risk groups = 1,380 rows)
+    DATE RANGE: Sep 2014 - Feb 2026
 
-    COUNT METHODOLOGY NOTE:
-    Risk group counts use an ever-enrolled (unduplicated) methodology -- a member
-    is counted once in a given month regardless of how many days they were enrolled.
-    This WILL NOT reconcile with stg_enrollment_by_county, which uses a
-    point-in-time (end-of-month snapshot) methodology. This is by design per
-    HHSC reporting practice. See count_methodology column.
+    SHAPE CHANGE: Source table is wide (one column per risk group). This model
+    unpivots to long format (one row per risk group) to support GROUP BY and
+    filtering in mart models.
 
-    PRELIMINARY DATA NOTE:
-    TX policy allows 24-month retroactive adjustments. Rows for Sep 2025 onward
-    are considered preliminary and subject to revision. See is_preliminary column.
+    COUNT METHODOLOGY:
+    Most columns shift from point_in_time_count to average_daily_enrollment
+    at Aug 2025 when HHSC changed their internal reporting calculation.
+    Two exceptions:
+      - medicaid_clients_under_21: shift happens one month later at Sep 2025
+      - regular_chip: never exhibited fractional values, methodology unconfirmed,
+        treated as point_in_time_count throughout
+
+    childrens_and_chip_total excluded at ingestion -- derived sum, not a
+    true risk group. Recalculate in marts if needed by summing component columns.
 */
 
 with source as (
@@ -27,35 +32,51 @@ with source as (
 
 ),
 
+unpivoted as (
+
+    select
+        cast(month as date)         as report_month,
+        risk_group,
+        cast(enrollment as float)   as enrollment_count
+    from source
+    unpivot(enrollment for risk_group in (
+        medicaid_caseload,
+        aged_and_medicare_related,
+        disability_related,
+        parents,
+        pregnant_women,
+        breast_and_cervical_cancer,
+        childrens_medicaid_risk_group,
+        medicaid_clients_under_21,
+        medicaid_clients_21_and_older,
+        childrens_medicaid_chip_group,
+        regular_chip
+    ))
+
+),
+
 staged as (
 
     select
-        -- keys
-        cast(report_date as date)                          as report_month,
-        trim(risk_group)                                   as risk_group,
+        report_month,
+        risk_group,
+        enrollment_count,
 
-        -- measures
-        cast(enrollment as integer)                        as enrollment_count,
-
-        -- methodology documentation
-        'ever_enrolled_unduplicated'                       as count_methodology,
-
-        /*
-            Preliminary flag: Sep 2025 onward is within the 24-month TX retroactive
-            adjustment window. The same calendar month will show different totals
-            depending on which snapshot file you pull -- this is expected behavior,
-            not a data quality issue. Do not join or compare preliminary rows to
-            finalized rows without accounting for this.
-        */
         case
-            when cast(report_date as date) >= '2025-09-01' then true
-            else false
-        end                                                as is_preliminary,
+            when risk_group = 'regular_chip'
+                then 'point_in_time_count'
+            when risk_group = 'medicaid_clients_under_21'
+                and report_month >= '2025-09-01'
+                then 'average_daily_enrollment'
+            when risk_group != 'medicaid_clients_under_21'
+                and report_month >= '2025-08-01'
+                then 'average_daily_enrollment'
+            else 'point_in_time_count'
+        end                         as count_methodology,
 
-        -- audit
-        current_timestamp()                                as dbt_loaded_at
+        current_timestamp()         as dbt_loaded_at
 
-    from source
+    from unpivoted
 
 )
 
