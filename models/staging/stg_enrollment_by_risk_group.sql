@@ -40,17 +40,17 @@ unpivoted as (
         cast(enrollment as float)   as enrollment_count
     from source
     unpivot(enrollment for risk_group in (
-        medicaid_caseload,
-        aged_and_medicare_related,
-        disability_related,
-        parents,
-        pregnant_women,
-        breast_and_cervical_cancer,
-        childrens_medicaid_risk_group,
-        medicaid_clients_under_21,
-        medicaid_clients_21_and_older,
-        childrens_medicaid_chip_group,
-        regular_chip
+        "medicaid_caseload",
+        "aged_and_medicare_related",
+        "disability_related",
+        "parents",
+        "pregnant_women",
+        "breast_and_cervical_cancer",
+        "childrens_medicaid_risk_group",
+        "medicaid_clients_under_21",
+        "medicaid_clients_21_and_older",
+        "childrens_medicaid_chip_group",
+        "regular_chip"
     ))
 
 ),
