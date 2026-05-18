@@ -26,7 +26,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ['ever_enrolled_unduplicated']
+                values: ['point_in_time_count', 'average_daily_enrollment']
       - name: is_preliminary
         description: True for Sep 2025+ rows subject to retroactive revision
         tests:
