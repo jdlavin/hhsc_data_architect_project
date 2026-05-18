@@ -89,12 +89,16 @@ df = pd.read_excel(
     sheet_name='Caseload by RG',
     skiprows=2
 )
+ # the last few rows are blank or contain notes, so we trim to just the data
 df = df[0:138]
+
+# drop total column since it's just the sum of the other columns and can be calculated in Snowflake if needed
+df = df.drop(columns=['childrens_and_chip_total'])
+
 df = clean_columns(df)
 df = df.rename(columns={
     'childrens_medicaid':   'childrens_medicaid_risk_group',
     'childrens_medicaid_1': 'childrens_medicaid_chip_group',
-    'total':                'childrens_and_chip_total'
 })
 df['loaded_at'] = pd.Timestamp.now()
 load_table(df, 'ENROLLMENT_BY_RISK_GROUP')
@@ -277,3 +281,4 @@ load_table(mco_sda, 'MCO_ENROLLMENT_BY_SDA')
 
 conn.close()
 print("\nAll tables loaded. Connection closed.")
+
