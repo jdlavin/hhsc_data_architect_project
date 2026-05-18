@@ -202,7 +202,7 @@ for filepath in sorted(TIMELINESS_DIR.glob("*.xlsx")):
     redets['record_type'] = 'redeterminations'
 
     combined = pd.concat([apps, redets], ignore_index=True)
-    combined['report_month'] = report_month
+    combined['report_month'] = report_month.value // 1000
     all_timeliness.append(combined)
     print(f"  Processed {filename}: {len(combined)} rows")
 
