@@ -92,32 +92,29 @@ models:
         tests:
           - not_null
 
-  - name: stg_htw_enrollment
+  - name: stg_htw_caseload
     description: >
-      Staged monthly Healthy Texas Women program enrollment. Sep 2014-Feb 2026.
+      Staged monthly Healthy Texas Women program caseload. Sep 2014-Feb 2026.
       Statewide total only -- no county or risk group breakdown.
-      COUNT METHODOLOGY: ever_enrolled_unduplicated.
+      COUNT METHODOLOGY: Moved from point in time to average daily enrollment
+      on Aug 2025. Cast float to handle fractional values.
     columns:
       - name: report_month
         description: First day of the reporting month (date)
         tests:
           - not_null
           - unique
-      - name: enrollment_count
-        description: Monthly HTW enrollment count
+      - name: htw_caseload
+        description: Monthly HTW caseload count
         tests:
           - not_null
       - name: count_methodology
-        description: Always 'ever_enrolled_unduplicated' for this table
+        description: Either point_in_time or average_daily_enrollment
         tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ['ever_enrolled_unduplicated']
-      - name: is_preliminary
-        description: True for Sep 2025+ rows subject to retroactive revision
-        tests:
-          - not_null
+                values: ['point_in_time_count', 'average_daily_caseload']
 
   - name: stg_timeliness_medicaid
     description: >

@@ -216,6 +216,7 @@ timeliness.columns = (timeliness.columns
     .str.replace(' ', '_', regex=False)
 )
 
+timeliness = timeliness[timeliness['region'] != 'TOTAL']
 geographic_regions = ['01', '02/09', '03', '04', '05', '06', '07', '08', '10', '11']
 timeliness['is_geographic_region'] = timeliness['region'].isin(geographic_regions)
 timeliness['loaded_at'] = pd.Timestamp.now()
