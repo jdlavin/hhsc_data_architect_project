@@ -203,7 +203,6 @@ for filepath in sorted(TIMELINESS_DIR.glob("*.xlsx")):
 
     combined = pd.concat([apps, redets], ignore_index=True)
     combined['report_month'] = report_month
-    combined['source_file']  = filename
     all_timeliness.append(combined)
     print(f"  Processed {filename}: {len(combined)} rows")
 
@@ -216,7 +215,6 @@ timeliness.columns = (timeliness.columns
 )
 
 timeliness = timeliness[timeliness['region'] != 'TOTAL']
-timeliness = timeliness.drop(columns=['source_file'])
 geographic_regions = ['01', '02/09', '03', '04', '05', '06', '07', '08', '10', '11']
 timeliness['is_geographic_region'] = timeliness['region'].isin(geographic_regions)
 timeliness['loaded_at'] = pd.Timestamp.now()
