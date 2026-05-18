@@ -1,0 +1,200 @@
+version: 2
+
+models:
+  - name: stg_enrollment_by_risk_group
+    description: >
+      Staged monthly Medicaid enrollment by risk group. Sep 2014-Feb 2026.
+      COUNT METHODOLOGY: ever_enrolled_unduplicated.
+      Will NOT reconcile with stg_enrollment_by_county (different methodology).
+      Rows for Sep 2025+ are is_preliminary=true per TX 24-month adjustment window.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+      - name: risk_group
+        description: Medicaid eligibility/risk category
+        tests:
+          - not_null
+      - name: enrollment_count
+        description: Unduplicated member count enrolled during the month
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Always 'ever_enrolled_unduplicated' for this table
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ever_enrolled_unduplicated']
+      - name: is_preliminary
+        description: True for Sep 2025+ rows subject to retroactive revision
+        tests:
+          - not_null
+
+  - name: stg_enrollment_by_county
+    description: >
+      Staged monthly Medicaid enrollment by Texas county. 255 counties.
+      COUNT METHODOLOGY: point_in_time_end_of_month.
+      Will NOT reconcile with stg_enrollment_by_risk_group (different methodology).
+      Nov and Dec 2025 files not yet published by HHSC -- expected gap.
+      Rows for Sep 2025+ are is_preliminary=true.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+      - name: county_name
+        description: Texas county name (uppercase)
+        tests:
+          - not_null
+      - name: county_code
+        description: HHSC county code
+        tests:
+          - not_null
+      - name: enrollment_count
+        description: Point-in-time member count at month end
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Always 'point_in_time_end_of_month' for this table
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['point_in_time_end_of_month']
+      - name: is_preliminary
+        description: True for Sep 2025+ rows subject to retroactive revision
+        tests:
+          - not_null
+
+  - name: stg_chip_enrollment
+    description: >
+      Staged monthly CHIP enrollment by sub-program (CHIP, CHIP Perinate).
+      Sep 2014-Feb 2026.
+      COUNT METHODOLOGY: ever_enrolled_unduplicated.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+      - name: chip_program
+        description: CHIP sub-program name
+        tests:
+          - not_null
+      - name: enrollment_count
+        description: Monthly enrollment count
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Always 'ever_enrolled_unduplicated' for this table
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ever_enrolled_unduplicated']
+      - name: is_preliminary
+        description: True for Sep 2025+ rows subject to retroactive revision
+        tests:
+          - not_null
+
+  - name: stg_htw_enrollment
+    description: >
+      Staged monthly Healthy Texas Women program enrollment. Sep 2014-Feb 2026.
+      Statewide total only -- no county or risk group breakdown.
+      COUNT METHODOLOGY: ever_enrolled_unduplicated.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+          - unique
+      - name: enrollment_count
+        description: Monthly HTW enrollment count
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Always 'ever_enrolled_unduplicated' for this table
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ever_enrolled_unduplicated']
+      - name: is_preliminary
+        description: True for Sep 2025+ rows subject to retroactive revision
+        tests:
+          - not_null
+
+  - name: stg_timeliness_medicaid
+    description: >
+      Staged Medicaid application and redetermination timeliness metrics.
+      24-month rolling window. Measures percent of cases meeting federal
+      timeliness standards.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+      - name: measure_type
+        description: Application or Redetermination
+        tests:
+          - not_null
+      - name: total_cases
+        description: Total cases processed in the period
+        tests:
+          - not_null
+      - name: timely_cases
+        description: Cases meeting federal timeliness standard
+        tests:
+          - not_null
+      - name: untimely_cases
+        description: Cases NOT meeting timeliness standard (derived)
+        tests:
+          - not_null
+      - name: pct_timely
+        description: Percent of cases meeting timeliness standard (0-100)
+        tests:
+          - not_null
+      - name: is_preliminary
+        description: True for Sep 2025+ rows subject to retroactive revision
+        tests:
+          - not_null
+
+  - name: stg_mco_enrollment_by_sda
+    description: >
+      Staged SFY2025 Medicaid enrollment by MCO and Service Delivery Area.
+      19 MCOs x 14 SDAs. COUNT METHODOLOGY: sfy_monthly_average.
+      Will NOT reconcile with any other enrollment table.
+      Statewide total rows excluded at ingestion -- derive in marts by summing SDAs.
+      report_month derived from fiscal_year + fiscal_month (SFY starts Sep 1).
+    columns:
+      - name: mco_name
+        description: Managed Care Organization name
+        tests:
+          - not_null
+      - name: sda_name
+        description: HHSC Service Delivery Area name
+        tests:
+          - not_null
+      - name: fiscal_year
+        description: State fiscal year (e.g., 2025)
+        tests:
+          - not_null
+      - name: fiscal_month
+        description: Month within SFY (1=September, 12=August)
+        tests:
+          - not_null
+      - name: report_month
+        description: Calendar date (first of month) derived from fiscal_year + fiscal_month
+        tests:
+          - not_null
+      - name: enrollment_avg
+        description: SFY monthly average enrollment (fractional members possible)
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Always 'sfy_monthly_average' for this table
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['sfy_monthly_average']
+      - name: is_preliminary
+        description: True for SFY2025 rows subject to revision in later releases
+        tests:
+          - not_null
