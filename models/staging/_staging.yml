@@ -119,35 +119,47 @@ models:
   - name: stg_timeliness_medicaid
     description: >
       Staged Medicaid application and redetermination timeliness metrics.
-      24-month rolling window. Measures percent of cases meeting federal
-      timeliness standards.
+      24-month rolling window. One row per record_type per region per report_month.
+      Use is_geographic_region to filter to regional data only.
+      pct_timely is derived; src_percent is the source value for validation.
     columns:
       - name: report_month
         description: First day of the reporting month (date)
         tests:
           - not_null
-      - name: measure_type
-        description: Application or Redetermination
+      - name: region
+        description: Geographic region code (01-11) or processing unit code
         tests:
           - not_null
-      - name: total_cases
+      - name: record_type
+        description: applications or redeterminations
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['applications', 'redeterminations']
+      - name: disposed
         description: Total cases processed in the period
         tests:
           - not_null
-      - name: timely_cases
+      - name: timely
         description: Cases meeting federal timeliness standard
         tests:
           - not_null
-      - name: untimely_cases
-        description: Cases NOT meeting timeliness standard (derived)
+      - name: untimely
+        description: Cases not meeting timeliness standard (derived as disposed - timely)
         tests:
           - not_null
       - name: pct_timely
-        description: Percent of cases meeting timeliness standard (0-100)
+        description: Derived percent timely (timely / disposed * 100)
         tests:
           - not_null
-      - name: is_preliminary
-        description: True for Sep 2025+ rows subject to retroactive revision
+      - name: src_percent
+        description: Source percent value from raw file for validation against pct_timely
+        tests:
+          - not_null
+      - name: is_geographic_region
+        description: True for numeric region codes, false for processing unit codes
         tests:
           - not_null
 

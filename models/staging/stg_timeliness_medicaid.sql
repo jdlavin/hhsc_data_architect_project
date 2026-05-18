@@ -1,22 +1,27 @@
 {{
     config(
         materialized='view',
-        description='Staged Medicaid application and redetermination timeliness metrics. Casts types, derives pct_timely where not already present, and flags preliminary rows.'
+        description='Staged Medicaid application and redetermination timeliness metrics. Casts types, derives pct_timely and validates against source percent.'
     )
 }}
 
 /*
     SOURCE: HHSC_RAW.RAW.TIMELINESS_MEDICAID
-    GRAIN: One row per measure_type per report_month (864 rows, 24-month rolling window)
-    MEASURE TYPES: Applications, Redeterminations
+    GRAIN: One row per record_type per region per report_month
+    RECORD TYPES: applications, redeterminations
+    DATE RANGE: 24-month rolling window
 
-    Federal timeliness standards:
+    REGIONS: Numeric codes 01-11 (02/09 grouped) are geographic regions.
+    Non-geographic entities (CCC, DATA INT, MEPD, etc.) represent processing
+    offices or eligibility units. Use is_geographic_region flag to filter.
+
+    TIMELINESS STANDARDS:
       - Applications: 45 days for most; 90 days for disability-related
       - Redeterminations: processed before coverage lapses
 
-    pct_timely is either sourced directly from raw or derived here as
-    timely_cases / nullif(total_cases, 0). Both paths produce the same result;
-    the derivation is a safeguard against raw file inconsistencies.
+    PERCENT VALIDATION: src_percent is the raw source value. pct_timely is
+    derived as timely / nullif(disposed, 0). Both should agree within rounding.
+    Discrepancies indicate a source data issue worth investigating.
 */
 
 with source as (
@@ -29,25 +34,27 @@ staged as (
 
     select
         -- keys
-        cast(to_timestamp("report_month", 6) as date)      as report_month,
-        trim(measure_type)                                 as measure_type,
+        cast(to_timestamp("report_month", 6) as date)          as report_month,
+        trim("region")                                         as region,
+        trim("record_type")                                    as record_type,
 
         -- measures
-        cast(total_cases as integer)                       as total_cases,
-        cast(timely_cases as integer)                      as timely_cases,
-        cast(total_cases - timely_cases as integer)        as untimely_cases,
+        cast("disposed" as integer)                            as disposed,
+        cast("timely" as integer)                              as timely,
+        cast("disposed" as integer) - cast("timely" as integer) as untimely,
 
-        -- derived rate: prefer source value, fall back to calculation
-        coalesce(
-            cast(pct_timely as float),
-            round(
-                cast(timely_cases as float) / nullif(cast(total_cases as float), 0) * 100,
-                2
-            )
-        )                                                  as pct_timely,
+        -- derived pct for validation against source
+        round(
+            cast("timely" as float) / nullif(cast("disposed" as float), 0) * 100,
+            2
+        )                                                      as pct_timely,
+        cast("percent" as float)                               as src_percent,
+
+        -- flags
+        cast("is_geographic_region" as boolean)                as is_geographic_region,
 
         -- audit
-        current_timestamp()                                as dbt_loaded_at
+        current_timestamp()                                    as dbt_loaded_at
 
     from source
 
