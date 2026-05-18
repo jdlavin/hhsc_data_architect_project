@@ -35,9 +35,9 @@ with source as (
 unpivoted as (
 
     select
-        cast(month as date)         as report_month,
+        cast(to_timestamp("month", 6) as date)  as report_month,
         risk_group,
-        cast(enrollment as float)   as enrollment_count
+        cast(enrollment as float)               as enrollment_count
     from source
     unpivot(enrollment for risk_group in (
         "medicaid_caseload",

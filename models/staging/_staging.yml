@@ -25,7 +25,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['ever_enrolled_unduplicated']
+              arguments:
+                values: ['ever_enrolled_unduplicated']
       - name: is_preliminary
         description: True for Sep 2025+ rows subject to retroactive revision
         tests:
@@ -60,7 +61,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['point_in_time_end_of_month']
+              arguments:
+                values: ['point_in_time_end_of_month']
       - name: is_preliminary
         description: True for Sep 2025+ rows subject to retroactive revision
         tests:
@@ -89,7 +91,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['ever_enrolled_unduplicated']
+              arguments:
+                values: ['ever_enrolled_unduplicated']
       - name: is_preliminary
         description: True for Sep 2025+ rows subject to retroactive revision
         tests:
@@ -115,7 +118,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['ever_enrolled_unduplicated']
+              arguments:
+                values: ['ever_enrolled_unduplicated']
       - name: is_preliminary
         description: True for Sep 2025+ rows subject to retroactive revision
         tests:
@@ -193,7 +197,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['sfy_monthly_average']
+              arguments:
+                values: ['sfy_monthly_average']
       - name: is_preliminary
         description: True for SFY2025 rows subject to revision in later releases
         tests:
