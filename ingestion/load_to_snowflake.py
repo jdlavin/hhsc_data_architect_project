@@ -145,7 +145,7 @@ all_frames = []
 
 for filepath in sorted(COUNTY_DIR.glob("*.xlsx")):
     filename = filepath.name
-    report_month = parse_report_month(filename) // 1000 # convert to Unix timestamp 
+    report_month = parse_report_month(filename)
 
     df = pd.read_excel(filepath, sheet_name='Summary', skiprows=2, header=0)
 
@@ -167,7 +167,7 @@ for filepath in sorted(COUNTY_DIR.glob("*.xlsx")):
     df = df[pd.to_numeric(df['hhsc_county_code'], errors='coerce').notna()].copy()
     df['hhsc_county_code'] = df['hhsc_county_code'].astype(int)
 
-    df['report_month'] = pd.to_datetime(report_month)
+    df['report_month'] = pd.to_datetime(report_month) // 1000 # convert to Unix timestamp 
     df['loaded_at']    = pd.Timestamp.now()
 
     all_frames.append(df)
