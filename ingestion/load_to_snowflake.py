@@ -268,12 +268,12 @@ for block_start in range(DATA_START_ROW, DATA_END_ROW, MCO_BLOCK_SIZE):
                 'enrollment':      value,
                 'enrollment_type': 'sfy_monthly_average',
                 'fiscal_year':     2025,
-                'source_file':     f.name,
                 'loaded_at':       pd.Timestamp.now()
             })
 
 mco_sda = pd.DataFrame(records)
 mco_sda['mco_name'] = mco_sda['mco_name'].str.replace('\n', ' ', regex=False).str.strip()
+mco_sda = mco_sda[~((mco_sda['program'] == 'TOTAL') | (mco_sda['sub_program'] == 'TOTAL'))]
 
 print(f"  Total rows: {len(mco_sda)}")
 load_table(mco_sda, 'MCO_ENROLLMENT_BY_SDA')
