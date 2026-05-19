@@ -32,7 +32,6 @@ models:
   hhsc_data_architect_project:
     staging:
       +materialized: view
-      +schema: staging
     marts:
       +materialized: table
       +schema: marts
