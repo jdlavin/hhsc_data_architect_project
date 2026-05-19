@@ -7,7 +7,7 @@
 
 /*
     SOURCE: HHSC_RAW.RAW.ENROLLMENT_BY_RISK_GROUP
-    GRAIN: One row per risk_group per report_month (138 months x 9 risk groups = 1,242 rows)
+    GRAIN: One row per risk_group per report_month (138 months x 10 risk dimensions = 1,390 rows)
     DATE RANGE: Sep 2014 - Feb 2026
 
     SHAPE CHANGE: Source table is wide (one column per risk group). This model
