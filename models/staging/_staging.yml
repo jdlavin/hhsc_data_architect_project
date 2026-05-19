@@ -173,17 +173,28 @@ models:
 
   - name: stg_mco_enrollment_by_sda
     description: >
-      Staged SFY2025 Medicaid enrollment by MCO and Service Delivery Area.
-      19 MCOs x 14 SDAs. COUNT METHODOLOGY: sfy_monthly_average.
+      Staged SFY2025 Medicaid enrollment by MCO, program, sub-program, and
+      Service Delivery Area. 205 rows -- full fiscal year averages, no monthly
+      breakdown. COUNT METHODOLOGY: sfy_monthly_average via enrollment_type column.
       Will NOT reconcile with any other enrollment table.
-      Statewide total rows excluded at ingestion -- derive in marts by summing SDAs.
-      report_month derived from fiscal_year + fiscal_month (SFY starts Sep 1).
+      program=TOTAL and sub_program=TOTAL rows excluded at ingestion.
     columns:
       - name: mco_name
         description: Managed Care Organization name
         tests:
           - not_null
-      - name: sda_name
+      - name: program
+        description: Program type (CHIP or MEDICAID)
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['CHIP', 'MEDICAID']
+      - name: sub_program
+        description: Sub-program (STAR, STAR+Plus, STAR Kids, STAR Health, Dual Demo, Regular, Perinatal)
+        tests:
+          - not_null
+      - name: sda
         description: HHSC Service Delivery Area name
         tests:
           - not_null
@@ -191,26 +202,11 @@ models:
         description: State fiscal year (e.g., 2025)
         tests:
           - not_null
-      - name: fiscal_month
-        description: Month within SFY (1=September, 12=August)
-        tests:
-          - not_null
-      - name: report_month
-        description: Calendar date (first of month) derived from fiscal_year + fiscal_month
-        tests:
-          - not_null
       - name: enrollment_avg
         description: SFY monthly average enrollment (fractional members possible)
         tests:
           - not_null
-      - name: count_methodology
-        description: Always 'sfy_monthly_average' for this table
-        tests:
-          - not_null
-          - accepted_values:
-              arguments:
-                values: ['sfy_monthly_average']
-      - name: is_preliminary
-        description: True for SFY2025 rows subject to revision in later releases
+      - name: enrollment_type
+        description: Always sfy_monthly_average -- documents count methodology
         tests:
           - not_null
