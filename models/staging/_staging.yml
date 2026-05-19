@@ -1,0 +1,212 @@
+version: 2
+
+models:
+  - name: stg_enrollment_by_risk_group
+    description: >
+      Staged monthly Medicaid enrollment by risk group. Sep 2014-Feb 2026.
+      COUNT METHODOLOGY: ever_enrolled_unduplicated.
+      Will NOT reconcile with stg_enrollment_by_county (different methodology).
+      Rows for Sep 2025+ are is_preliminary=true per TX 24-month adjustment window.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+      - name: risk_group
+        description: Medicaid eligibility/risk category
+        tests:
+          - not_null
+      - name: enrollment_count
+        description: Unduplicated member count enrolled during the month
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Always 'ever_enrolled_unduplicated' for this table
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['point_in_time_count', 'average_daily_enrollment']
+
+  - name: stg_enrollment_by_county
+    description: >
+      Staged monthly Medicaid enrollment by Texas county. 255 counties.
+      COUNT METHODOLOGY: point_in_time_count throughout -- no fractional values
+      observed unlike stg_enrollment_by_risk_group. Will NOT reconcile with
+      stg_enrollment_by_risk_group (different methodology). Nov and Dec 2025
+      files not yet published by HHSC -- expected gap.
+      Rows for Sep 2025+ are is_preliminary=true.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+      - name: county_code
+        description: HHSC county code
+        tests:
+          - not_null
+      - name: county_name
+        description: Texas county name
+        tests:
+          - not_null
+      - name: risk_group
+        description: Risk group category unpivoted from wide source table
+        tests:
+          - not_null
+      - name: enrollment_count
+        description: Point-in-time member count at month end
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Always point_in_time_count for this table
+        tests:
+          - not_null
+
+  - name: stg_chip_enrollment
+    description: >
+      Staged monthly CHIP enrollment metrics. One row per month, Sep 2014-Feb 2026.
+      Wide format retained -- columns are different metrics, not categories.
+      No methodology shift detected, integer casting safe throughout.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+          - unique
+      - name: chip_caseload
+        description: Total CHIP caseload for the month
+        tests:
+          - not_null
+      - name: new_enrollment
+        description: New members enrolled during the month
+        tests:
+          - not_null
+      - name: renewals
+        description: Members renewed during the month
+        tests:
+          - not_null
+      - name: disenrollment
+        description: Members disenrolled during the month
+        tests:
+          - not_null
+
+  - name: stg_htw_caseload
+    description: >
+      Staged monthly Healthy Texas Women program caseload. Sep 2014-Feb 2026.
+      Statewide total only -- no county or risk group breakdown.
+      COUNT METHODOLOGY: Moved from point in time to average daily enrollment
+      on Aug 2025. Cast float to handle fractional values.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+          - unique
+      - name: htw_caseload
+        description: Monthly HTW caseload count
+        tests:
+          - not_null
+      - name: count_methodology
+        description: Either point_in_time or average_daily_enrollment
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['point_in_time_count', 'average_daily_caseload']
+
+  - name: stg_timeliness_medicaid
+    description: >
+      Staged Medicaid application and redetermination timeliness metrics.
+      24-month rolling window. One row per record_type per region per report_month.
+      Use is_geographic_region to filter to regional data only.
+      pct_timely is derived; src_percent is the source value for validation.
+    columns:
+      - name: report_month
+        description: First day of the reporting month (date)
+        tests:
+          - not_null
+      - name: region
+        description: Geographic region code (01-11) or processing unit code
+        tests:
+          - not_null
+      - name: record_type
+        description: applications or redeterminations
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['applications', 'redeterminations']
+      - name: disposed
+        description: Total cases processed in the period. Null for some non-geographic entities.
+        tests:
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
+      - name: timely
+        description: Cases meeting federal timeliness standard. Null for some non-geographic entities.
+        tests:
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
+      - name: untimely
+        description: Cases not meeting timeliness standard (derived). Null for some non-geographic entities.
+        tests:
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
+      - name: pct_timely
+        description: Derived percent timely. Null for some non-geographic entities.
+        tests:
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
+      - name: src_percent
+        description: Source percent value from raw file. Null for some non-geographic entities.
+        tests:
+          - not_null:
+              config:
+                where: "is_geographic_region = true"
+      - name: is_geographic_region
+        description: True for numeric region codes, false for processing unit codes
+        tests:
+          - not_null
+
+  - name: stg_mco_enrollment_by_sda
+    description: >
+      Staged SFY2025 Medicaid enrollment by MCO, program, sub-program, and
+      Service Delivery Area. 205 rows -- full fiscal year averages, no monthly
+      breakdown. COUNT METHODOLOGY: sfy_monthly_average via enrollment_type column.
+      Will NOT reconcile with any other enrollment table.
+      program=TOTAL and sub_program=TOTAL rows excluded at ingestion.
+    columns:
+      - name: mco_name
+        description: Managed Care Organization name
+        tests:
+          - not_null
+      - name: program
+        description: Program type (CHIP or MEDICAID)
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['CHIP', 'MEDICAID']
+      - name: sub_program
+        description: Sub-program (STAR, STAR+Plus, STAR Kids, STAR Health, Dual Demo, Regular, Perinatal)
+        tests:
+          - not_null
+      - name: sda
+        description: HHSC Service Delivery Area name
+        tests:
+          - not_null
+      - name: fiscal_year
+        description: State fiscal year (e.g., 2025)
+        tests:
+          - not_null
+      - name: enrollment_avg
+        description: SFY monthly average enrollment (fractional members possible)
+        tests:
+          - not_null
+      - name: enrollment_type
+        description: Always sfy_monthly_average -- documents count methodology
+        tests:
+          - not_null

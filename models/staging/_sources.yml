@@ -1,0 +1,110 @@
+version: 2
+
+sources:
+  - name: hhsc_raw
+    database: HHSC_RAW
+    schema: RAW
+    description: >
+      Raw Texas Medicaid enrollment and timeliness data loaded directly from HHSC
+      public data files. No transformations applied at this layer — values are
+      faithful to the source files. Methodology differences across tables are
+      documented in the staging layer.
+
+    tables:
+      - name: enrollment_by_risk_group
+        description: >
+          Monthly statewide Medicaid enrollment counts broken down by risk group
+          (e.g., TANF, SSI, Foster Care, CHIP Perinates). Each row is one
+          risk-group/month combination. Sep 2014–Feb 2026.
+          COUNT METHODOLOGY: Ever-enrolled (unduplicated within month).
+          These totals will NOT reconcile with county totals, which use a
+          different point-in-time methodology.
+        columns:
+          - name: report_date
+            description: First day of the reporting month (YYYY-MM-DD)
+          - name: risk_group
+            description: Medicaid eligibility/risk category name
+          - name: enrollment
+            description: Unduplicated member count enrolled during the month
+
+      - name: enrollment_by_county
+        description: >
+          Monthly Medicaid enrollment counts by Texas county of residence.
+          Each row is one county/month combination. Loaded from 21 individual
+          monthly release files (loop-unioned). Nov and Dec 2025 files not yet
+          published by HHSC as of ingestion date.
+          COUNT METHODOLOGY: Point-in-time snapshot at month end.
+          These totals will NOT reconcile with risk group totals.
+          Rows flagged is_preliminary=true cover Sep 2025–Feb 2026 and are
+          subject to 24-month retroactive adjustment under TX policy.
+        columns:
+          - name: report_date
+            description: First day of the reporting month (YYYY-MM-DD)
+          - name: county_name
+            description: Texas county name (uppercase)
+          - name: county_code
+            description: FIPS or HHSC county code
+          - name: enrollment
+            description: Point-in-time member count at month end
+
+      - name: chip_enrollment_detail
+        description: >
+          Monthly CHIP (Children's Health Insurance Program) enrollment detail.
+          Sep 2014–Feb 2026. Tracks CHIP and CHIP Perinate enrollment separately.
+        columns:
+          - name: report_date
+            description: First day of the reporting month
+          - name: program
+            description: CHIP sub-program (e.g., CHIP, CHIP Perinate)
+          - name: enrollment
+            description: Monthly enrollment count
+
+      - name: htw_enrollment
+        description: >
+          Monthly Healthy Texas Women (HTW) program enrollment. Sep 2014–Feb 2026.
+          HTW provides family planning services to low-income women not otherwise
+          eligible for Medicaid.
+        columns:
+          - name: report_date
+            description: First day of the reporting month
+          - name: enrollment
+            description: Monthly HTW enrollment count
+
+      - name: timeliness_medicaid
+        description: >
+          Monthly Medicaid application and redetermination timeliness metrics.
+          24 monthly files covering the most recent rolling window. Tracks
+          percent of applications and redeterminations processed within
+          federal timeliness standards.
+        columns:
+          - name: report_date
+            description: First day of the reporting month
+          - name: measure_type
+            description: Application or Redetermination
+          - name: total_cases
+            description: Total cases processed in the period
+          - name: timely_cases
+            description: Cases processed within federal timeliness standard
+          - name: pct_timely
+            description: Percent of cases meeting timeliness standard
+
+      - name: mco_enrollment_by_sda
+        description: >
+          SFY2025 monthly average Medicaid enrollment by Managed Care Organization
+          (MCO) and Service Delivery Area (SDA). 19 MCOs x 14 SDAs in long format.
+          COUNT METHODOLOGY: SFY monthly average -- NOT a point-in-time count.
+          Statewide total rows excluded from raw load (derived aggregates).
+          enrollment_type column = 'sfy_monthly_average' documents this distinction.
+        columns:
+          - name: mco_name
+            description: Managed Care Organization name
+          - name: sda_name
+            description: HHSC Service Delivery Area name
+          - name: fiscal_year
+            description: State fiscal year (e.g., 2025)
+          - name: fiscal_month
+            description: Month number within the state fiscal year (1=September)
+          - name: enrollment
+            description: SFY monthly average enrollment count
+          - name: enrollment_type
+            description: Always 'sfy_monthly_average' -- documents count methodology

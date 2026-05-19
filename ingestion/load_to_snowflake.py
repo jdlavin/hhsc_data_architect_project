@@ -89,13 +89,19 @@ df = pd.read_excel(
     sheet_name='Caseload by RG',
     skiprows=2
 )
+ # the last few rows are blank or contain notes, so we trim to just the data
 df = df[0:138]
+
 df = clean_columns(df)
 df = df.rename(columns={
     'childrens_medicaid':   'childrens_medicaid_risk_group',
     'childrens_medicaid_1': 'childrens_medicaid_chip_group',
     'total':                'childrens_and_chip_total'
 })
+
+# drop total column since it's just the sum of the other columns and can be calculated in Snowflake if needed
+df = df.drop(columns=['childrens_and_chip_total'])
+
 df['loaded_at'] = pd.Timestamp.now()
 load_table(df, 'ENROLLMENT_BY_RISK_GROUP')
 
@@ -161,8 +167,7 @@ for filepath in sorted(COUNTY_DIR.glob("*.xlsx")):
     df = df[pd.to_numeric(df['hhsc_county_code'], errors='coerce').notna()].copy()
     df['hhsc_county_code'] = df['hhsc_county_code'].astype(int)
 
-    df['report_month'] = pd.to_datetime(report_month)
-    df['source_file']  = filename
+    df['report_month'] = pd.to_datetime(report_month).value // 1000 # convert to Unix timestamp
     df['loaded_at']    = pd.Timestamp.now()
 
     all_frames.append(df)
@@ -197,8 +202,7 @@ for filepath in sorted(TIMELINESS_DIR.glob("*.xlsx")):
     redets['record_type'] = 'redeterminations'
 
     combined = pd.concat([apps, redets], ignore_index=True)
-    combined['report_month'] = report_month
-    combined['source_file']  = filename
+    combined['report_month'] = report_month.value // 1000 # convert to Unix timestamp
     all_timeliness.append(combined)
     print(f"  Processed {filename}: {len(combined)} rows")
 
@@ -210,6 +214,7 @@ timeliness.columns = (timeliness.columns
     .str.replace(' ', '_', regex=False)
 )
 
+timeliness = timeliness[timeliness['region'] != 'TOTAL']
 geographic_regions = ['01', '02/09', '03', '04', '05', '06', '07', '08', '10', '11']
 timeliness['is_geographic_region'] = timeliness['region'].isin(geographic_regions)
 timeliness['loaded_at'] = pd.Timestamp.now()
@@ -263,12 +268,12 @@ for block_start in range(DATA_START_ROW, DATA_END_ROW, MCO_BLOCK_SIZE):
                 'enrollment':      value,
                 'enrollment_type': 'sfy_monthly_average',
                 'fiscal_year':     2025,
-                'source_file':     f.name,
                 'loaded_at':       pd.Timestamp.now()
             })
 
 mco_sda = pd.DataFrame(records)
 mco_sda['mco_name'] = mco_sda['mco_name'].str.replace('\n', ' ', regex=False).str.strip()
+mco_sda = mco_sda[~((mco_sda['program'] == 'TOTAL') | (mco_sda['sub_program'] == 'TOTAL'))]
 
 print(f"  Total rows: {len(mco_sda)}")
 load_table(mco_sda, 'MCO_ENROLLMENT_BY_SDA')
@@ -277,3 +282,4 @@ load_table(mco_sda, 'MCO_ENROLLMENT_BY_SDA')
 
 conn.close()
 print("\nAll tables loaded. Connection closed.")
+
