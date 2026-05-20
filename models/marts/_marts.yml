@@ -164,3 +164,97 @@ models:
         description: Timestamp when the mart table was last built.
         tests:
           - not_null
+
+  - name: mart_timeliness_performance
+    description: >
+      Monthly Medicaid application and redetermination timeliness performance
+      by region and processing unit. Includes month-over-month trends and
+      3-month rolling averages. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_timeliness_medicaid.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+
+      - name: region
+        description: >
+          HHSC geographic region (01-11) or processing unit code.
+          Region 02/09 represents two regions reported together.
+          See is_geographic_region to distinguish regions from processing units.
+        tests:
+          - not_null
+
+      - name: is_geographic_region
+        description: >
+          True when region is one of the 11 HHSC geographic service regions.
+          False for specialized processing units: MEPD, CCC, DATA INT,
+          PERFORMANC, ST OFFICE, VIC, and UNKNOWN.
+        tests:
+          - not_null
+
+      - name: record_type
+        description: >
+          Type of eligibility action. applications = new Medicaid applications
+          subject to 45-day federal processing standard. redeterminations =
+          eligibility renewals.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - applications
+                  - redeterminations
+
+      - name: disposed
+        description: Total number of cases disposed (processed) that month.
+        tests:
+          - not_null
+
+      - name: timely
+        description: Number of cases processed within the federal timeliness standard.
+        tests:
+          - not_null
+
+      - name: untimely
+        description: Number of cases that exceeded the federal timeliness standard.
+        tests:
+          - not_null
+
+      - name: pct_timely
+        description: >
+          Percentage of disposed cases processed timely. Recalculated from
+          timely / disposed for auditability. Uses div0 to guard against
+          division by zero. Compare against src_percent to verify.
+        tests:
+          - not_null
+
+      - name: src_percent
+        description: >
+          Original HHSC-calculated timeliness percentage retained for
+          comparison. Validated against pct_timely — max observed variance
+          is sub-microsecond floating point rounding only.
+        tests:
+          - not_null
+
+      - name: pct_timely_variance
+        description: >
+          Difference between recalculated pct_timely and src_percent.
+          Confirms data quality — observed variance is sub-microsecond
+          floating point rounding with no meaningful discrepancies.
+
+      - name: mom_change_pct_timely
+        description: >
+          Month-over-month change in pct_timely for the same region and
+          record type. Null for the first month in the series.
+
+      - name: rolling_3m_pct_timely
+        description: >
+          3-month rolling average of pct_timely for the same region and
+          record type. Smooths monthly noise for trend analysis. Includes
+          current month and 2 preceding months.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null

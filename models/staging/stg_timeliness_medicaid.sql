@@ -12,12 +12,20 @@
     DATE RANGE: 24-month rolling window
 
     REGIONS: Numeric codes 01-11 (02/09 grouped) are geographic regions.
-    Non-geographic entities (CCC, DATA INT, MEPD, etc.) represent processing
-    offices or eligibility units. Use is_geographic_region flag to filter.
+    Non-geographic entities (CCC, DATA INT, ST OFFICE, PERFORMANC, VIC,
+    UNKNOWN) represent processing offices or eligibility units.
+    Use is_geographic_region flag to filter.
 
     TIMELINESS STANDARDS:
       - Applications: 45 days for most; 90 days for disability-related
       - Redeterminations: processed before coverage lapses
+
+    EXCLUDED ROWS:
+      - MEPD: Medicaid for the Elderly and People with Disabilities unit.
+        Filtered at staging — HHSC includes MEPD rows in the source but
+        never populates timeliness metrics, resulting in 48 structurally
+        empty rows (24 months x 2 record types). Requires domain knowledge
+        to identify — filtered here rather than at ingestion.
 
     PERCENT VALIDATION: src_percent is the raw source value. pct_timely is
     derived as timely / nullif(disposed, 0). Both should agree within rounding.
@@ -34,29 +42,30 @@ staged as (
 
     select
         -- keys
-        cast(to_timestamp("report_month", 6) as date)          as report_month,
-        trim("region")                                         as region,
-        trim("record_type")                                    as record_type,
+        cast(to_timestamp("report_month", 6) as date)           as report_month,
+        trim("region")                                          as region,
+        trim("record_type")                                     as record_type,
 
         -- measures
-        cast("disposed" as integer)                            as disposed,
-        cast("timely" as integer)                              as timely,
+        cast("disposed" as integer)                             as disposed,
+        cast("timely" as integer)                               as timely,
         cast("disposed" as integer) - cast("timely" as integer) as untimely,
 
         -- derived pct for validation against source
         round(
             cast("timely" as float) / nullif(cast("disposed" as float), 0) * 100,
             2
-        )                                                      as pct_timely,
-        cast("percent" as float)                               as src_percent,
+        )                                                       as pct_timely,
+        cast("percent" as float)                                as src_percent,
 
         -- flags
-        cast("is_geographic_region" as boolean)                as is_geographic_region,
+        cast("is_geographic_region" as boolean)                 as is_geographic_region,
 
         -- audit
-        current_timestamp()                                    as dbt_loaded_at
+        current_timestamp()                                     as dbt_loaded_at
 
     from source
+    where trim("region") != 'MEPD'
 
 )
 
