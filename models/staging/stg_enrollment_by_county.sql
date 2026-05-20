@@ -21,10 +21,29 @@
     cover overlapping categories but WILL NOT reconcile due to different
     counting methodologies. Do not attempt to reconcile.
 
-   DATE RANGE: Apr 2024 - Sep 2025 (21 monthly files).
+    DATE RANGE: Jan 2024 - Sep 2025 (21 monthly files).
     Nov and Dec 2025 files not yet published by HHSC as of ingestion.
     No preliminary data loaded -- preliminary county file skipped as
     2026 data has no counterpart tables to join against.
+
+    COUNTIES: 254 named Texas counties plus county_code 255 (Unknown) --
+    enrollees whose county of residence could not be determined. Unknown
+    is retained as a genuine source row representing real enrollees.
+    Flagged with is_unknown_county in mart models.
+
+    EXCLUDED ROWS:
+      - medicaid_caseload: grand total row, excluded at unpivot stage.
+        Requires domain knowledge to identify as derived — filtered here
+        rather than at ingestion. Reconstruct in marts via sum() if needed.
+
+    RISK GROUP CATEGORIES:
+      - caseload_by_risk_group: aged_and_medicare_related,
+        breast_and_cervical_cancer, disability_related, parents,
+        pregnant_women, childrens_medicaid
+      - caseload_by_age: medicaid_clients_under_21,
+        medicaid_clients_21_and_older
+      - childrens_medicaid_and_chip bucket not present at county level --
+        CHIP is not broken out in county enrollment files.
 */
 
 with source as (
@@ -43,7 +62,6 @@ unpivoted as (
         cast(enrollment as integer)                    as enrollment_count
     from source
     unpivot(enrollment for risk_group in (
-        "medicaid_caseload",
         "aged_and_medicare_related",
         "disability_related",
         "parents",
@@ -63,11 +81,29 @@ staged as (
         county_code,
         county_name,
         risk_group,
+
+        case
+            when risk_group in (
+                'aged_and_medicare_related',
+                'breast_and_cervical_cancer',
+                'disability_related',
+                'parents',
+                'pregnant_women',
+                'childrens_medicaid'
+            )                               then 'caseload_by_risk_group'
+            when risk_group in (
+                'medicaid_clients_under_21',
+                'medicaid_clients_21_and_older'
+            )                               then 'caseload_by_age'
+        end                                 as risk_group_category,
+
         enrollment_count,
 
-        'point_in_time_count'                          as count_methodology,
+        'point_in_time_count'               as count_methodology,
 
-        current_timestamp()                            as dbt_loaded_at
+        county_code = 255                   as is_unknown_county,
+
+        current_timestamp()                 as dbt_loaded_at
 
     from unpivoted
 
