@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: mart_enrollment_trends
+    description: >
+      Monthly Medicaid enrollment trends by risk group. Includes month-over-month
+      change and share of total enrollment. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_enrollment_by_risk_group.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+
+      - name: risk_group
+        description: Medicaid or CHIP risk group identifier.
+        tests:
+          - not_null
+
+      - name: risk_group_category
+        description: >
+          HHSC report header bucket. Values: caseload_by_risk_group,
+          caseload_by_age, childrens_medicaid_and_chip. Do not sum across
+          categories — childrens_medicaid_chip_group and regular_chip overlap
+          with childrens_medicaid_risk_group.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - caseload_by_risk_group
+                  - caseload_by_age
+                  - childrens_medicaid_and_chip
+
+      - name: enrollment_count
+        description: Enrollment figure. See count_methodology for calculation basis.
+        tests:
+          - not_null
+
+      - name: count_methodology
+        description: >
+          Identifies whether enrollment_count reflects point_in_time_count or
+          average_daily_enrollment. HHSC shifted methodology at Aug 2025 for most
+          groups, Sep 2025 for medicaid_clients_under_21. mom_change and
+          mom_change_pct will reflect noise at this boundary.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time_count
+                  - average_daily_enrollment
+
+      - name: mom_change
+        description: >
+          Month-over-month change in enrollment_count for the same risk group.
+          Null for the first month in the series (no prior month available).
+          Will reflect methodology boundary noise at Aug/Sep 2025.
+
+      - name: mom_change_pct
+        description: >
+          Month-over-month percentage change in enrollment_count for the same
+          risk group. Calculated using div0 to avoid division by zero. Null for
+          the first month in the series.
+
+      - name: pct_of_total
+        description: >
+          Risk group enrollment as a share of total enrollment. Denominator is
+          the sum of caseload_by_risk_group category only — the six mutually
+          exclusive component groups — to avoid double-counting. Null for
+          caseload_by_age and childrens_medicaid_and_chip rows by design.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
