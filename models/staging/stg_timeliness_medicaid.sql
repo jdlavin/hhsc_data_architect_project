@@ -65,7 +65,7 @@ staged as (
         current_timestamp()                                     as dbt_loaded_at
 
     from source
-    where trim("region") != 'MEPD'
+    where trim("region") not in ('MEPD', 'ST OFFICE', 'UNKNOWN')
 
 )
 
