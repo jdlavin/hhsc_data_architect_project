@@ -22,10 +22,14 @@
 
     EXCLUDED ROWS:
       - MEPD: Medicaid for the Elderly and People with Disabilities unit.
-        Filtered at staging — HHSC includes MEPD rows in the source but
-        never populates timeliness metrics, resulting in 48 structurally
-        empty rows (24 months x 2 record types). Requires domain knowledge
-        to identify — filtered here rather than at ingestion.
+        Filtered at staging — HHSC includes rows in the source but never
+        populates timeliness metrics. 48 structurally empty rows.
+      - ST OFFICE: State Office centralized processing unit. Filtered at
+        staging — 10 structurally empty rows across both record types.
+      - UNKNOWN: Unclassified processing unit. Filtered at staging — 4
+        structurally empty rows across both record types.
+        All three require domain knowledge to identify — filtered here
+        rather than at ingestion.
 
     PERCENT VALIDATION: src_percent is the raw source value. pct_timely is
     derived as timely / nullif(disposed, 0). Both should agree within rounding.
