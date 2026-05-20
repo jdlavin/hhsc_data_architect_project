@@ -258,3 +258,79 @@ models:
         description: Timestamp when the mart table was last built.
         tests:
           - not_null
+
+  - name: mart_chip_enrollment
+    description: >
+      Monthly CHIP enrollment trends including caseload, enrollment flows,
+      and reconciliation variance. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_chip_enrollment.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+          - unique
+
+      - name: chip_caseload
+        description: Total CHIP caseload for the month.
+        tests:
+          - not_null
+
+      - name: new_enrollment
+        description: New members enrolled in CHIP that month.
+        tests:
+          - not_null
+
+      - name: renewals
+        description: >
+          Existing members whose CHIP coverage was successfully renewed.
+          Renewals retain members in the caseload rather than adding net
+          new members — do not add to net_enrollment calculation.
+        tests:
+          - not_null
+
+      - name: disenrollment
+        description: Members who left CHIP coverage that month.
+        tests:
+          - not_null
+
+      - name: net_enrollment
+        description: >
+          new_enrollment minus disenrollment. Positive values indicate
+          caseload growth, negative values indicate contraction.
+
+      - name: mom_change_caseload
+        description: >
+          Month-over-month change in chip_caseload. Null for September 2014
+          (first month in series).
+
+      - name: mom_change_pct_caseload
+        description: >
+          Month-over-month percentage change in chip_caseload. Calculated
+          using div0 to avoid division by zero. Null for September 2014.
+
+      - name: renewal_rate
+        description: >
+          Renewals as a share of chip_caseload. Measures retention —
+          higher values indicate members are successfully renewing coverage.
+
+      - name: disenrollment_rate
+        description: >
+          Disenrollment as a share of chip_caseload. Measures churn.
+          Elevated values historically coincide with policy events such as
+          Medicaid unwinding (2021-2023).
+
+      - name: caseload_reconciliation_variance_pct
+        description: >
+          Difference between reported caseload and implied caseload
+          (prior_caseload + new_enrollment - disenrollment) as a share of
+          reported caseload. Small variances are expected due to retroactive
+          adjustments within Texas's 24-month adjustment window. Large
+          variances warrant investigation — historically the maximum observed
+          variance of 4.1% coincides with COVID disruption in April 2020.
+          Null for September 2014 (no prior month).
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
