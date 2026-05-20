@@ -74,3 +74,93 @@ models:
         description: Timestamp when the mart table was last built.
         tests:
           - not_null
+
+  - name: mart_enrollment_by_county
+    description: >
+      Monthly Medicaid enrollment by Texas county and risk group. Includes
+      month-over-month change and share of county and state totals. Materialized
+      as a table for downstream Streamlit reporting. Draws from stg_enrollment_by_county.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+
+      - name: county_code
+        description: HHSC county code. 255 indicates unknown county of residence.
+        tests:
+          - not_null
+
+      - name: county_name
+        description: Texas county name. 'Unknown' for county_code 255.
+        tests:
+          - not_null
+
+      - name: is_unknown_county
+        description: >
+          True when county_code = 255, indicating enrollee county of residence
+          could not be determined. Retain in statewide totals, filter in
+          map-based visualizations.
+        tests:
+          - not_null
+
+      - name: risk_group
+        description: Medicaid risk group identifier.
+        tests:
+          - not_null
+
+      - name: risk_group_category
+        description: >
+          HHSC report header bucket. Values: caseload_by_risk_group,
+          caseload_by_age. childrens_medicaid_and_chip not present at
+          county level — CHIP is not broken out in county enrollment files.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - caseload_by_risk_group
+                  - caseload_by_age
+
+      - name: enrollment_count
+        description: Point-in-time enrollment count for this county, risk group, and month.
+        tests:
+          - not_null
+
+      - name: count_methodology
+        description: >
+          Always point_in_time_count for county data — no methodology shift
+          observed unlike stg_enrollment_by_risk_group.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time_count
+
+      - name: mom_change
+        description: >
+          Month-over-month change in enrollment_count for the same risk group
+          and county. Null for January 2024 (first month in series).
+
+      - name: mom_change_pct
+        description: >
+          Month-over-month percentage change in enrollment_count. Calculated
+          using div0 to avoid division by zero. Null for January 2024.
+
+      - name: pct_of_county_total
+        description: >
+          Risk group enrollment as a share of total county enrollment that month.
+          Denominator uses caseload_by_risk_group category only to avoid
+          double-counting. Null for caseload_by_age rows by design.
+
+      - name: pct_of_state_total
+        description: >
+          County enrollment as a share of statewide enrollment for that risk
+          group and month. Unknown county included in both numerator and
+          denominator.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
