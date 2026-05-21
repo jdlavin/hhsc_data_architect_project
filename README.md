@@ -6,13 +6,6 @@ Try running the following commands:
 - dbt run
 - dbt test
 
-
-### Resources:
-- Learn more about dbt [in the docs](https://docs.getdbt.com/docs/introduction)
-- Check out [Discourse](https://discourse.getdbt.com/) for commonly asked questions and answers
-- Join the [chat](https://community.getdbt.com/) on Slack for live discussions and support
-- Find [dbt events](https://events.getdbt.com) near you
-- Check out [the blog](https://blog.getdbt.com/) for the latest news on dbt's development and best practices
 # HHSC CFO Data Architect Portfolio Pipeline
 
 A production-style data pipeline built on real, publicly available Texas Medicaid/CHIP data
@@ -27,7 +20,7 @@ and as a domain knowledge accelerator for Texas Medicaid finance concepts.
 The role calls for hands-on proficiency across the full data stack — ETL, data warehousing,
 data modeling, and analytics-ready output. This project covers all of it end to end:
 
-| Requirement (from JD) | How It's Addressed Here |
+| How It's Addressed Here |
 |---|---|
 | ETL development and monitoring | Python ingestion layer with structured error handling, full-refresh load pattern, source traceability |
 | Snowflake data warehouse | Three-layer Snowflake architecture (RAW → STAGING → MARTS) with RSA key auth |
@@ -41,10 +34,10 @@ data modeling, and analytics-ready output. This project covers all of it end to 
 
 ## Tech Stack
 
-- **Python 3.11** — ingestion, EDA, Streamlit dashboard
+- **Python 3.11** — ingestion, EDA, Streamlit dashboard (coming soon)
+- **pandas** — EDA and in-memory transformation during ingestion
 - **Snowflake** — cloud data warehouse (RSA key pair auth)
 - **dbt-snowflake** — staging and mart layer transformations, testing, documentation
-- **pandas** — EDA and in-memory transformation during ingestion
 - **conda** — environment management (`dbt-snowflake` env)
 - **VS Code** — development IDE
 
@@ -99,21 +92,6 @@ documented, testable, and visible to downstream consumers.
 
 **Marts are pre-computed for analytics.** The mart layer materializes as tables and carries
 all derived metrics so that Streamlit and other consumers run zero business logic of their own.
-
----
-
-## Data Sources
-
-All data is publicly available from the Texas HHSC Healthcare Statistics website.
-
-| Source | Coverage | Grain |
-|---|---|---|
-| Enrollment by Risk Group | Monthly, statewide | Risk group × month |
-| Enrollment by County | Monthly, by county | Risk group × county × month |
-| CHIP Enrollment Detail | Monthly, statewide | Month |
-| Healthy Texas Women (HTW) Enrollment | Monthly, statewide | Month |
-| Timeliness | Monthly, by region | Record type × region × month |
-| MCO Enrollment by SDA | SFY2025 annual averages | MCO × program × sub-program × SDA |
 
 ---
 
@@ -203,7 +181,7 @@ COVID-era processing disruptions. This is expected and documented.
 ### Environment
 
 ```bash
-conda activate dbt-snowflake
+conda activate your_env
 ```
 
 ### Snowflake Objects
@@ -240,20 +218,6 @@ dbt docs generate && dbt docs serve   # Browse lineage and documentation
 
 dbt expects `~/.dbt/profiles.yml` configured for your Snowflake account. Profile name
 must match the `profile:` value in `dbt_project.yml`.
-
----
-
-## Project Context
-
-This project was built as a portfolio piece targeting the HHSC CFO Data Architect I role
-(Posting #12430, closing July 7, 2026). The domain — Texas Medicaid and CHIP — is the
-actual subject matter of the role. All data is public.
-
-The pipeline is production-style in structure: separate ingestion, staging, and mart layers
-with clear separation of concerns, documented design decisions, passing tests, and an
-analytics-ready output layer. It is also a deliberate domain knowledge accelerator — the
-process of building it surfaces Medicaid finance concepts (managed care capitation, PMPM,
-provider finance, enrollment methodology) that are directly relevant to the work.
 
 ---
 
