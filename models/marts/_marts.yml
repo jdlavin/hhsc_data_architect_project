@@ -385,3 +385,100 @@ models:
         description: Timestamp when the mart table was last built.
         tests:
           - not_null
+
+  - name: mart_mco_enrollment
+    description: >
+      SFY2025 MCO enrollment averages by service delivery area and program.
+      Includes MCO market share within SDA and statewide program. Materialized
+      as a table for downstream Streamlit reporting. Draws from
+      stg_mco_enrollment_by_sda.
+    columns:
+      - name: fiscal_year
+        description: State fiscal year. SFY2025 only — no prior years available.
+        tests:
+          - not_null
+
+      - name: mco_name
+        description: Name of the Managed Care Organization.
+        tests:
+          - not_null
+
+      - name: program
+        description: >
+          Managed care program. Values: CHIP, MEDICAID.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - CHIP
+                  - MEDICAID
+
+      - name: sub_program
+        description: >
+          Program sub-type. Values: Perinatal, Regular (CHIP);
+          Dual Demo, STAR, STAR Health, STAR Kids, STAR+Plus (Medicaid).
+          STAR Health has a single statewide MCO contractor — mco_share_of_sda
+          values of 100% for STAR Health are correct by design.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Perinatal
+                  - Regular
+                  - Dual Demo
+                  - STAR
+                  - STAR Health
+                  - STAR Kids
+                  - STAR+Plus
+
+      - name: sda
+        description: >
+          Service Delivery Area. Geographic unit for MCO contract coverage.
+          Not all MCOs operate in all SDAs — sparse coverage is expected,
+          particularly in smaller or rural SDAs.
+        tests:
+          - not_null
+
+      - name: enrollment_avg
+        description: >
+          Average monthly enrollment for this MCO/program/SDA combination
+          across SFY2025.
+        tests:
+          - not_null
+
+      - name: enrollment_type
+        description: >
+          Always sfy_monthly_average — no methodology variation in this table.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - sfy_monthly_average
+
+      - name: mco_share_of_sda
+        description: >
+          MCO enrollment as a share of total enrollment for that
+          program/sub_program/SDA combination. Values of 100% are valid
+          where only one MCO operates in a given SDA/program — reflects
+          sparse MCO coverage in smaller or rural SDAs, not a data quality
+          issue. STAR Health will always show 100% as it has a single
+          statewide contractor. Confirmed all programs sum to exactly 100%.
+        tests:
+          - not_null
+
+      - name: mco_share_of_program
+        description: >
+          MCO enrollment as a share of total statewide enrollment for that
+          program/sub_program. Measures each MCO's overall market share
+          within a program regardless of geography. Confirmed all programs
+          sum to exactly 100%.
+        tests:
+          - not_null
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
