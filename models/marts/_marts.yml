@@ -334,3 +334,54 @@ models:
         description: Timestamp when the mart table was last built.
         tests:
           - not_null
+
+  - name: mart_htw_caseload
+    description: >
+      Monthly Healthy Texas Women caseload trends. Includes month-over-month
+      change and methodology flag. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_htw_caseload.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+          - unique
+
+      - name: htw_caseload
+        description: >
+          Total Healthy Texas Women caseload for the month. See
+          count_methodology for calculation basis.
+        tests:
+          - not_null
+
+      - name: count_methodology
+        description: >
+          Identifies whether htw_caseload reflects point_in_time_count or
+          average_daily_caseload. Shifts to average_daily_caseload at Aug
+          2025, consistent with the methodology change applied to
+          stg_enrollment_by_risk_group. mom_change_caseload and
+          mom_change_pct_caseload will reflect noise at this boundary.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time_count
+                  - average_daily_caseload
+
+      - name: mom_change_caseload
+        description: >
+          Month-over-month change in htw_caseload. Null for September 2014
+          (first month in series). Will reflect methodology boundary noise
+          at Aug 2025.
+
+      - name: mom_change_pct_caseload
+        description: >
+          Month-over-month percentage change in htw_caseload. Calculated
+          using div0 to avoid division by zero. Null for September 2014.
+          Will reflect methodology boundary noise at Aug 2025.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
