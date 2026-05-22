@@ -1,0 +1,484 @@
+version: 2
+
+models:
+  - name: mart_enrollment_trends
+    description: >
+      Monthly Medicaid enrollment trends by risk group. Includes month-over-month
+      change and share of total enrollment. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_enrollment_by_risk_group.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+
+      - name: risk_group
+        description: Medicaid or CHIP risk group identifier.
+        tests:
+          - not_null
+
+      - name: risk_group_category
+        description: >
+          HHSC report header bucket. Values: caseload_by_risk_group,
+          caseload_by_age, childrens_medicaid_and_chip. Do not sum across
+          categories — childrens_medicaid_chip_group and regular_chip overlap
+          with childrens_medicaid_risk_group.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - caseload_by_risk_group
+                  - caseload_by_age
+                  - childrens_medicaid_and_chip
+
+      - name: enrollment_count
+        description: Enrollment figure. See count_methodology for calculation basis.
+        tests:
+          - not_null
+
+      - name: count_methodology
+        description: >
+          Identifies whether enrollment_count reflects point_in_time_count or
+          average_daily_enrollment. HHSC shifted methodology at Aug 2025 for most
+          groups, Sep 2025 for medicaid_clients_under_21. mom_change and
+          mom_change_pct will reflect noise at this boundary.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time_count
+                  - average_daily_enrollment
+
+      - name: mom_change
+        description: >
+          Month-over-month change in enrollment_count for the same risk group.
+          Null for the first month in the series (no prior month available).
+          Will reflect methodology boundary noise at Aug/Sep 2025.
+
+      - name: mom_change_pct
+        description: >
+          Month-over-month percentage change in enrollment_count for the same
+          risk group. Calculated using div0 to avoid division by zero. Null for
+          the first month in the series.
+
+      - name: pct_of_total
+        description: >
+          Risk group enrollment as a share of total enrollment. Denominator is
+          the sum of caseload_by_risk_group category only — the six mutually
+          exclusive component groups — to avoid double-counting. Null for
+          caseload_by_age and childrens_medicaid_and_chip rows by design.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
+
+  - name: mart_enrollment_by_county
+    description: >
+      Monthly Medicaid enrollment by Texas county and risk group. Includes
+      month-over-month change and share of county and state totals. Materialized
+      as a table for downstream Streamlit reporting. Draws from stg_enrollment_by_county.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+
+      - name: county_code
+        description: HHSC county code. 255 indicates unknown county of residence.
+        tests:
+          - not_null
+
+      - name: county_name
+        description: Texas county name. 'Unknown' for county_code 255.
+        tests:
+          - not_null
+
+      - name: is_unknown_county
+        description: >
+          True when county_code = 255, indicating enrollee county of residence
+          could not be determined. Retain in statewide totals, filter in
+          map-based visualizations.
+        tests:
+          - not_null
+
+      - name: risk_group
+        description: Medicaid risk group identifier.
+        tests:
+          - not_null
+
+      - name: risk_group_category
+        description: >
+          HHSC report header bucket. Values: caseload_by_risk_group,
+          caseload_by_age. childrens_medicaid_and_chip not present at
+          county level — CHIP is not broken out in county enrollment files.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - caseload_by_risk_group
+                  - caseload_by_age
+
+      - name: enrollment_count
+        description: Point-in-time enrollment count for this county, risk group, and month.
+        tests:
+          - not_null
+
+      - name: count_methodology
+        description: >
+          Always point_in_time_count for county data — no methodology shift
+          observed unlike stg_enrollment_by_risk_group.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time_count
+
+      - name: mom_change
+        description: >
+          Month-over-month change in enrollment_count for the same risk group
+          and county. Null for January 2024 (first month in series).
+
+      - name: mom_change_pct
+        description: >
+          Month-over-month percentage change in enrollment_count. Calculated
+          using div0 to avoid division by zero. Null for January 2024.
+
+      - name: pct_of_county_total
+        description: >
+          Risk group enrollment as a share of total county enrollment that month.
+          Denominator uses caseload_by_risk_group category only to avoid
+          double-counting. Null for caseload_by_age rows by design.
+
+      - name: pct_of_state_total
+        description: >
+          County enrollment as a share of statewide enrollment for that risk
+          group and month. Unknown county included in both numerator and
+          denominator.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
+
+  - name: mart_timeliness_performance
+    description: >
+      Monthly Medicaid application and redetermination timeliness performance
+      by region and processing unit. Includes month-over-month trends and
+      3-month rolling averages. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_timeliness_medicaid.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+
+      - name: region
+        description: >
+          HHSC geographic region (01-11) or processing unit code.
+          Region 02/09 represents two regions reported together.
+          See is_geographic_region to distinguish regions from processing units.
+        tests:
+          - not_null
+
+      - name: is_geographic_region
+        description: >
+          True when region is one of the 11 HHSC geographic service regions.
+          False for specialized processing units: MEPD, CCC, DATA INT,
+          PERFORMANC, ST OFFICE, VIC, and UNKNOWN.
+        tests:
+          - not_null
+
+      - name: record_type
+        description: >
+          Type of eligibility action. applications = new Medicaid applications
+          subject to 45-day federal processing standard. redeterminations =
+          eligibility renewals.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - applications
+                  - redeterminations
+
+      - name: disposed
+        description: Total number of cases disposed (processed) that month.
+        tests:
+          - not_null
+
+      - name: timely
+        description: Number of cases processed within the federal timeliness standard.
+        tests:
+          - not_null
+
+      - name: untimely
+        description: Number of cases that exceeded the federal timeliness standard.
+        tests:
+          - not_null
+
+      - name: pct_timely
+        description: >
+          Percentage of disposed cases processed timely. Recalculated from
+          timely / disposed for auditability. Uses div0 to guard against
+          division by zero. Compare against src_percent to verify.
+        tests:
+          - not_null
+
+      - name: src_percent
+        description: >
+          Original HHSC-calculated timeliness percentage retained for
+          comparison. Validated against pct_timely — max observed variance
+          is sub-microsecond floating point rounding only.
+        tests:
+          - not_null
+
+      - name: pct_timely_variance
+        description: >
+          Difference between recalculated pct_timely and src_percent.
+          Confirms data quality — observed variance is sub-microsecond
+          floating point rounding with no meaningful discrepancies.
+
+      - name: mom_change_pct_timely
+        description: >
+          Month-over-month change in pct_timely for the same region and
+          record type. Null for the first month in the series.
+
+      - name: rolling_3m_pct_timely
+        description: >
+          3-month rolling average of pct_timely for the same region and
+          record type. Smooths monthly noise for trend analysis. Includes
+          current month and 2 preceding months.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
+
+  - name: mart_chip_enrollment
+    description: >
+      Monthly CHIP enrollment trends including caseload, enrollment flows,
+      and reconciliation variance. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_chip_enrollment.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+          - unique
+
+      - name: chip_caseload
+        description: Total CHIP caseload for the month.
+        tests:
+          - not_null
+
+      - name: new_enrollment
+        description: New members enrolled in CHIP that month.
+        tests:
+          - not_null
+
+      - name: renewals
+        description: >
+          Existing members whose CHIP coverage was successfully renewed.
+          Renewals retain members in the caseload rather than adding net
+          new members — do not add to net_enrollment calculation.
+        tests:
+          - not_null
+
+      - name: disenrollment
+        description: Members who left CHIP coverage that month.
+        tests:
+          - not_null
+
+      - name: net_enrollment
+        description: >
+          new_enrollment minus disenrollment. Positive values indicate
+          caseload growth, negative values indicate contraction.
+
+      - name: mom_change_caseload
+        description: >
+          Month-over-month change in chip_caseload. Null for September 2014
+          (first month in series).
+
+      - name: mom_change_pct_caseload
+        description: >
+          Month-over-month percentage change in chip_caseload. Calculated
+          using div0 to avoid division by zero. Null for September 2014.
+
+      - name: renewal_rate
+        description: >
+          Renewals as a share of chip_caseload. Measures retention —
+          higher values indicate members are successfully renewing coverage.
+
+      - name: disenrollment_rate
+        description: >
+          Disenrollment as a share of chip_caseload. Measures churn.
+          Elevated values historically coincide with policy events such as
+          Medicaid unwinding (2021-2023).
+
+      - name: caseload_reconciliation_variance_pct
+        description: >
+          Difference between reported caseload and implied caseload
+          (prior_caseload + new_enrollment - disenrollment) as a share of
+          reported caseload. Small variances are expected due to retroactive
+          adjustments within Texas's 24-month adjustment window. Large
+          variances warrant investigation — historically the maximum observed
+          variance of 4.1% coincides with COVID disruption in April 2020.
+          Null for September 2014 (no prior month).
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
+
+  - name: mart_htw_caseload
+    description: >
+      Monthly Healthy Texas Women caseload trends. Includes month-over-month
+      change and methodology flag. Materialized as a table for downstream
+      Streamlit reporting. Draws from stg_htw_caseload.
+    columns:
+      - name: report_month
+        description: First day of the reporting month.
+        tests:
+          - not_null
+          - unique
+
+      - name: htw_caseload
+        description: >
+          Total Healthy Texas Women caseload for the month. See
+          count_methodology for calculation basis.
+        tests:
+          - not_null
+
+      - name: count_methodology
+        description: >
+          Identifies whether htw_caseload reflects point_in_time_count or
+          average_daily_caseload. Shifts to average_daily_caseload at Aug
+          2025, consistent with the methodology change applied to
+          stg_enrollment_by_risk_group. mom_change_caseload and
+          mom_change_pct_caseload will reflect noise at this boundary.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time_count
+                  - average_daily_caseload
+
+      - name: mom_change_caseload
+        description: >
+          Month-over-month change in htw_caseload. Null for September 2014
+          (first month in series). Will reflect methodology boundary noise
+          at Aug 2025.
+
+      - name: mom_change_pct_caseload
+        description: >
+          Month-over-month percentage change in htw_caseload. Calculated
+          using div0 to avoid division by zero. Null for September 2014.
+          Will reflect methodology boundary noise at Aug 2025.
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null
+
+  - name: mart_mco_enrollment
+    description: >
+      SFY2025 MCO enrollment averages by service delivery area and program.
+      Includes MCO market share within SDA and statewide program. Materialized
+      as a table for downstream Streamlit reporting. Draws from
+      stg_mco_enrollment_by_sda.
+    columns:
+      - name: fiscal_year
+        description: State fiscal year. SFY2025 only — no prior years available.
+        tests:
+          - not_null
+
+      - name: mco_name
+        description: Name of the Managed Care Organization.
+        tests:
+          - not_null
+
+      - name: program
+        description: >
+          Managed care program. Values: CHIP, MEDICAID.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - CHIP
+                  - MEDICAID
+
+      - name: sub_program
+        description: >
+          Program sub-type. Values: Perinatal, Regular (CHIP);
+          Dual Demo, STAR, STAR Health, STAR Kids, STAR+Plus (Medicaid).
+          STAR Health has a single statewide MCO contractor — mco_share_of_sda
+          values of 100% for STAR Health are correct by design.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Perinatal
+                  - Regular
+                  - Dual Demo
+                  - STAR
+                  - STAR Health
+                  - STAR Kids
+                  - STAR+Plus
+
+      - name: sda
+        description: >
+          Service Delivery Area. Geographic unit for MCO contract coverage.
+          Not all MCOs operate in all SDAs — sparse coverage is expected,
+          particularly in smaller or rural SDAs.
+        tests:
+          - not_null
+
+      - name: enrollment_avg
+        description: >
+          Average monthly enrollment for this MCO/program/SDA combination
+          across SFY2025.
+        tests:
+          - not_null
+
+      - name: enrollment_type
+        description: >
+          Always sfy_monthly_average — no methodology variation in this table.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - sfy_monthly_average
+
+      - name: mco_share_of_sda
+        description: >
+          MCO enrollment as a share of total enrollment for that
+          program/sub_program/SDA combination. Values of 100% are valid
+          where only one MCO operates in a given SDA/program — reflects
+          sparse MCO coverage in smaller or rural SDAs, not a data quality
+          issue. STAR Health will always show 100% as it has a single
+          statewide contractor. Confirmed all programs sum to exactly 100%.
+        tests:
+          - not_null
+
+      - name: mco_share_of_program
+        description: >
+          MCO enrollment as a share of total statewide enrollment for that
+          program/sub_program. Measures each MCO's overall market share
+          within a program regardless of geography. Confirmed all programs
+          sum to exactly 100%.
+        tests:
+          - not_null
+
+      - name: dbt_loaded_at
+        description: Timestamp when the mart table was last built.
+        tests:
+          - not_null

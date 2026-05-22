@@ -7,7 +7,7 @@
 
 /*
     SOURCE: HHSC_RAW.RAW.ENROLLMENT_BY_RISK_GROUP
-    GRAIN: One row per risk_group per report_month (138 months x 10 risk groups = 1,380 rows)
+    GRAIN: One row per risk_group per report_month (138 months x 10 risk dimensions = 1,390 rows)
     DATE RANGE: Sep 2014 - Feb 2026
 
     SHAPE CHANGE: Source table is wide (one column per risk group). This model
@@ -22,8 +22,18 @@
       - regular_chip: never exhibited fractional values, methodology unconfirmed,
         treated as point_in_time_count throughout
 
-    childrens_and_chip_total excluded at ingestion -- derived sum, not a
-    true risk group. Recalculate in marts if needed by summing component columns.
+    EXCLUDED ROWS:
+      - medicaid_caseload: grand total row, excluded at unpivot stage. Requires
+        domain knowledge to identify as derived — filtered here rather than at
+        ingestion. Reconstruct in marts via sum() if needed.
+      - childrens_and_chip_total excluded at ingestion -- derived sum, not a
+        true risk group. Recalculate in marts if needed by summing component columns.
+
+    RISK GROUP CATEGORIES:
+    risk_group_category maps each risk group to its HHSC report header bucket.
+    childrens_medicaid_chip_group and regular_chip appear under
+    childrens_medicaid_and_chip and should not be summed alongside
+    childrens_medicaid_risk_group to avoid double-counting children's Medicaid.
 */
 
 with source as (
@@ -40,7 +50,6 @@ unpivoted as (
         cast(enrollment as float)               as enrollment_count
     from source
     unpivot(enrollment for risk_group in (
-        "medicaid_caseload",
         "aged_and_medicare_related",
         "disability_related",
         "parents",
@@ -60,6 +69,26 @@ staged as (
     select
         report_month,
         risk_group,
+
+        case
+            when risk_group in (
+                'aged_and_medicare_related',
+                'breast_and_cervical_cancer',
+                'disability_related',
+                'parents',
+                'pregnant_women',
+                'childrens_medicaid_risk_group'
+            )                               then 'caseload_by_risk_group'
+            when risk_group in (
+                'medicaid_clients_under_21',
+                'medicaid_clients_21_and_older'
+            )                               then 'caseload_by_age'
+            when risk_group in (
+                'childrens_medicaid_chip_group',
+                'regular_chip'
+            )                               then 'childrens_medicaid_and_chip'
+        end                                 as risk_group_category,
+
         enrollment_count,
 
         case
@@ -72,9 +101,9 @@ staged as (
                 and report_month >= '2025-08-01'
                 then 'average_daily_enrollment'
             else 'point_in_time_count'
-        end                         as count_methodology,
+        end                                 as count_methodology,
 
-        current_timestamp()         as dbt_loaded_at
+        current_timestamp()                 as dbt_loaded_at
 
     from unpivoted
 
